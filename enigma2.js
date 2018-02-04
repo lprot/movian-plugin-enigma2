@@ -56,7 +56,7 @@ function setPageHeader(page, title) {
 }
 
 function trim(s) {
-    if (!s.toString()) return '';
+    if (!s || !s.toString()) return '';
     return s.replace(/^\s+|\s+$/g, '');
 };
 
