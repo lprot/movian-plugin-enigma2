@@ -34,8 +34,6 @@ RichText.prototype.toRichString = function(x) {
     return this.str;
 }
 
-var BASE_URL = "http://lubetube.com"
-
 var blue = '6699CC', orange = 'FFA500', red = 'EE0000', green = '008B45';
 function colorStr(str, color) {
     return '<font color="' + color + '"> (' + str + ')</font>';
@@ -123,7 +121,6 @@ new page.Route(plugin.id + ":getServices:(.*):(.*):(.*)", function(page, url, se
     setPageHeader(page, unescape(url) + ' - ' + trim(unescape(serviceName)));
     page.loading = true;
     var doc = http.request(unescape(url) + '/web/getservices?sRef=' + serviceReference);
-    page.loading = false;
     doc = XML.parse(doc);
     try {
         var e2services = doc.e2servicelist.filterNodes('e2service');
@@ -131,9 +128,11 @@ new page.Route(plugin.id + ":getServices:(.*):(.*):(.*)", function(page, url, se
             page.appendItem(plugin.id + ":zapTo:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference), "video", {
                 title: e2services[i].e2servicename
             });
+        page.metadata.title += ' (' + e2services.length + ')';
     } catch(err) {
         page.error('The list is empty');
     }
+    page.loading = false;
 });
 
 new page.Route(plugin.id + ":bouquets:(.*)", function(page, url) {
@@ -152,12 +151,32 @@ new page.Route(plugin.id + ":bouquets:(.*)", function(page, url) {
     }
 });
 
+new page.Route(plugin.id + ":satellites:(.*)", function(page, url) {
+    setPageHeader(page, unescape(url) + ' - Satellites');
+    page.loading = true;
+    var doc = http.request(unescape(url) + '/web/getservices?sRef=' +
+        encodeURIComponent('1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) FROM SATELLITES ORDER BY name'));
+    doc = XML.parse(doc);
+    var e2services = doc.e2servicelist.filterNodes('e2service');
+    if (e2services.length)
+        page.metadata.title += ' (' + e2services.length + ')';
+    for (var i = 0; i < e2services.length; i++) {
+        if (e2services[i].e2servicereference.match(/flags/) || e2services[i].e2servicereference.match(/FROM PROVIDERS/))
+            continue;
+        var name = trim(e2services[i].e2servicereference.match(/satellitePosition == ([\s\S]*?)\)/)[1]);
+        name = +name / 10 > 180 ? parseFloat(360 - name / 10).toFixed(1) + 'W' : parseFloat(name / 10).toFixed(1) + 'E'
+        page.appendItem(plugin.id + ":getServices:" + url + ':' + escape(name) + ':' + encodeURIComponent(e2services[i].e2servicereference), "directory", {
+            title: name
+        });
+    }
+    page.loading = false;
+});
+
 new page.Route(plugin.id + ":providers:(.*)", function(page, url) {
     setPageHeader(page, unescape(url) + ' - Providers');
     page.loading = true;
     var doc = http.request(unescape(url) + '/web/getservices?sRef=' +
         encodeURIComponent('1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) FROM PROVIDERS ORDER BY name'));
-    page.loading = false;
     doc = XML.parse(doc);
     var e2services = doc.e2servicelist.filterNodes('e2service');
     if (e2services.length)
@@ -167,6 +186,7 @@ new page.Route(plugin.id + ":providers:(.*)", function(page, url) {
             title: trim(e2services[i].e2servicename)
         });
     }
+    page.loading = false;
 });
 
 new page.Route(plugin.id + ":all:(.*)", function(page, url) {
@@ -174,7 +194,6 @@ new page.Route(plugin.id + ":all:(.*)", function(page, url) {
     page.loading = true;
     var doc = http.request(unescape(url) + '/web/getservices?sRef=' +
         encodeURIComponent('1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) ORDER BY name'));
-    page.loading = false;
     doc = XML.parse(doc);
     var e2services = doc.e2servicelist.filterNodes('e2service');
     if (e2services.length)
@@ -184,6 +203,7 @@ new page.Route(plugin.id + ":all:(.*)", function(page, url) {
             title: trim(e2services[i].e2servicename)
         });
     }
+    page.loading = false;
 });
 
 new page.Route(plugin.id + ":processReceiver:(.*)", function(page, url) {
@@ -218,6 +238,10 @@ new page.Route(plugin.id + ":processReceiver:(.*)", function(page, url) {
     page.appendItem(plugin.id + ":bouquets:" + url, "directory", {
         title: 'Bouquets'
     });
+    page.appendItem(plugin.id + ":satellites:" + url, "directory", {
+        title: 'Satellites'
+    });
+
     if (service.showProviders)
         page.appendItem(plugin.id + ":providers:" + url, "directory", {
             title: 'Providers'
@@ -231,7 +255,6 @@ new page.Route(plugin.id + ":processReceiver:(.*)", function(page, url) {
 });
 
 function showReceivers(page) {
-print(store.reveivers);
     try {
         var receivers = eval(store.receivers);
     } catch(e) {}
