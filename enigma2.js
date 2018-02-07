@@ -117,8 +117,8 @@ new page.Route(plugin.id + ":zapTo:(.*):(.*):(.*)", function(page, url, serviceN
     });
 });
 
-new page.Route(plugin.id + ":getServices:(.*):(.*):(.*)", function(page, url, serviceName, serviceReference) {
-    setPageHeader(page, unescape(url) + ' - ' + trim(unescape(serviceName)));
+new page.Route(plugin.id + ":getServices:(.*):(.*):(.*):(.*)", function(page, url, serviceName, serviceReference, title) {
+    setPageHeader(page, unescape(title) + ' - ' + trim(unescape(serviceName)));
     page.loading = true;
     var doc = http.request(unescape(url) + '/web/getservices?sRef=' + serviceReference);
     doc = XML.parse(doc);
@@ -135,8 +135,8 @@ new page.Route(plugin.id + ":getServices:(.*):(.*):(.*)", function(page, url, se
     page.loading = false;
 });
 
-new page.Route(plugin.id + ":bouquets:(.*)", function(page, url) {
-    setPageHeader(page, unescape(url) + ' - Bouquets');
+new page.Route(plugin.id + ":bouquets:(.*):(.*)", function(page, title, url) {
+    setPageHeader(page, unescape(title) + ' - Bouquets');
     page.loading = true;
     var doc = http.request(unescape(url) + '/web/getservices');
     page.loading = false;
@@ -145,14 +145,14 @@ new page.Route(plugin.id + ":bouquets:(.*)", function(page, url) {
     if (e2services.length)
         page.metadata.title += ' (' + e2services.length + ')';
     for (var i = 0; i < e2services.length; i++) {
-        page.appendItem(plugin.id + ":getServices:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference), "directory", {
+        page.appendItem(plugin.id + ":getServices:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "directory", {
             title: e2services[i].e2servicename
         });
     }
 });
 
-new page.Route(plugin.id + ":satellites:(.*)", function(page, url) {
-    setPageHeader(page, unescape(url) + ' - Satellites');
+new page.Route(plugin.id + ":satellites:(.*):(.*)", function(page, title, url) {
+    setPageHeader(page, unescape(title) + ' - Satellites');
     page.loading = true;
     var doc = http.request(unescape(url) + '/web/getservices?sRef=' +
         encodeURIComponent('1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) FROM SATELLITES ORDER BY name'));
@@ -165,15 +165,15 @@ new page.Route(plugin.id + ":satellites:(.*)", function(page, url) {
             continue;
         var name = trim(e2services[i].e2servicereference.match(/satellitePosition == ([\s\S]*?)\)/)[1]);
         name = +name / 10 > 180 ? parseFloat(360 - name / 10).toFixed(1) + 'W' : parseFloat(name / 10).toFixed(1) + 'E'
-        page.appendItem(plugin.id + ":getServices:" + url + ':' + escape(name) + ':' + encodeURIComponent(e2services[i].e2servicereference), "directory", {
+        page.appendItem(plugin.id + ":getServices:" + url + ':' + escape(name) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "directory", {
             title: name
         });
     }
     page.loading = false;
 });
 
-new page.Route(plugin.id + ":providers:(.*)", function(page, url) {
-    setPageHeader(page, unescape(url) + ' - Providers');
+new page.Route(plugin.id + ":providers:(.*):(.*)", function(page, title, url) {
+    setPageHeader(page, unescape(title) + ' - Providers');
     page.loading = true;
     var doc = http.request(unescape(url) + '/web/getservices?sRef=' +
         encodeURIComponent('1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) FROM PROVIDERS ORDER BY name'));
@@ -182,15 +182,15 @@ new page.Route(plugin.id + ":providers:(.*)", function(page, url) {
     if (e2services.length)
         page.metadata.title += ' (' + e2services.length + ')';
     for (var i = 0; i < e2services.length; i++) {
-        page.appendItem(plugin.id + ":getServices:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference), "directory", {
+        page.appendItem(plugin.id + ":getServices:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "directory", {
             title: trim(e2services[i].e2servicename)
         });
     }
     page.loading = false;
 });
 
-new page.Route(plugin.id + ":all:(.*)", function(page, url) {
-    setPageHeader(page, unescape(url) + ' - All services');
+new page.Route(plugin.id + ":all:(.*):(.*)", function(page, title, url) {
+    setPageHeader(page, unescape(title) + ' - All services');
     page.loading = true;
     var doc = http.request(unescape(url) + '/web/getservices?sRef=' +
         encodeURIComponent('1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) ORDER BY name'));
@@ -199,19 +199,19 @@ new page.Route(plugin.id + ":all:(.*)", function(page, url) {
     if (e2services.length)
         page.metadata.title += ' (' + e2services.length + ')';
     for (var i = 0; i < e2services.length; i++) {
-        page.appendItem(plugin.id + ":zapTo:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference), "video", {
+        page.appendItem(plugin.id + ":zapTo:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "video", {
             title: trim(e2services[i].e2servicename)
         });
     }
     page.loading = false;
 });
 
-new page.Route(plugin.id + ":processReceiver:(.*)", function(page, url) {
-    setPageHeader(page, unescape(url));
+new page.Route(plugin.id + ":processReceiver:(.*):(.*)", function(page, title, url) {
+    setPageHeader(page, unescape(title));
+    page.loading = true;
 
     var description = '';
     try {
-        page.loading = true;
         var doc = http.request(unescape(url) + '/web/about');
         doc = XML.parse(doc);
         description = coloredStr('Current service: ', orange) + doc.e2abouts.e2about.e2servicename +
@@ -219,7 +219,8 @@ new page.Route(plugin.id + ":processReceiver:(.*)", function(page, url) {
             coloredStr('\nReceiver model: ', orange) + doc.e2abouts.e2about.e2model +
             coloredStr('\nFirmware version: ', orange) + doc.e2abouts.e2about.e2imageversion +
             coloredStr('\nEnigma version: ', orange) + doc.e2abouts.e2about.e2enigmaversion +
-            coloredStr('\nWebif version: ', orange) + doc.e2abouts.e2about.e2webifversion
+            coloredStr('\nWebif version: ', orange) + doc.e2abouts.e2about.e2webifversion +
+            coloredStr('\nWeb page: ', orange) + unescape(url)
     } catch(err) {
         page.error(err);
         return;
@@ -235,44 +236,24 @@ new page.Route(plugin.id + ":processReceiver:(.*)", function(page, url) {
             title: 'Screenshot from the current service'
         });
 
-    page.appendItem(plugin.id + ":bouquets:" + url, "directory", {
+    page.appendItem(plugin.id + ":bouquets:" + title + ':' + url, "directory", {
         title: 'Bouquets'
     });
-    page.appendItem(plugin.id + ":satellites:" + url, "directory", {
+    page.appendItem(plugin.id + ":satellites:" + title + ':' + url, "directory", {
         title: 'Satellites'
     });
 
     if (service.showProviders)
-        page.appendItem(plugin.id + ":providers:" + url, "directory", {
+        page.appendItem(plugin.id + ":providers:" + title + ':' + url, "directory", {
             title: 'Providers'
         });
 
     if (service.showAllServices)
-        page.appendItem(plugin.id + ":all:" + url, "directory", {
+        page.appendItem(plugin.id + ":all:" + title + ':' + url, "directory", {
             title: 'All services'
         });
     page.loading = false;
 });
-
-function showReceivers(page) {
-    try {
-        var receivers = eval(store.receivers);
-    } catch(e) {}
-
-    if (!receivers || !receivers.toString()) {
-        store.receivers = '[]'
-        page.appendPassiveItem("directory", '' , {
-            title: "Receiver's list is empty, you can add a receiver from the right side menu"
-        });
-    }
-
-    for (var i in receivers) {
-        var receiver = JSON.parse(receivers[i]);
-        page.appendItem(plugin.id + ":processReceiver:" + decodeURIComponent(receiver.link), "directory", {
-            title: new RichText(decodeURIComponent(receiver.title) + coloredStr(' (' + decodeURIComponent(receiver.link) + ')', blue))
-        });
-    }
-}
 
 new page.Route(plugin.id + ":start", function(page) {
     setPageHeader(page, plugin.synopsis);
@@ -308,5 +289,22 @@ new page.Route(plugin.id + ":start", function(page) {
             }
         }
     });
-    showReceivers(page);
-});
+    
+    // Show receivers
+    try {
+        var receivers = eval(store.receivers);
+    } catch(e) {}
+
+    if (!receivers || !receivers.toString()) {
+        store.receivers = '[]'
+        page.appendPassiveItem("directory", '' , {
+            title: "Receiver's list is empty, you can add a receiver from the right side menu"
+        });
+    }
+
+    for (var i in receivers) {
+        var receiver = JSON.parse(receivers[i]);
+        page.appendItem(plugin.id + ":processReceiver:" + escape(decodeURIComponent(receiver.title)) + ':' + escape(decodeURIComponent(receiver.link)), "directory", {
+            title: new RichText(decodeURIComponent(receiver.title) + coloredStr(' (' + decodeURIComponent(receiver.link) + ')', blue))
+        });
+    }});
