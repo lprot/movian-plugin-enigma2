@@ -51,6 +51,7 @@ function setPageHeader(page, title) {
     page.type = "directory";
     page.contents = "items";
     page.loading = false;
+    page.entries = 0;
 }
 
 function trim(s) {
@@ -98,7 +99,7 @@ new page.Route(plugin.id + ":streamFromCurrent:(.*)", function(page, url) {
     });
 });
 
-new page.Route(plugin.id + ":zapTo:(.*):(.*):(.*)", function(page, url, serviceName, serviceReference) {
+new page.Route(plugin.id + ":zapTo:(.*):(.*):(.*):(.*)", function(page, url, serviceName, serviceReference, title) {
     page.loading = true;
     if (service.zap)
         var doc = http.request(unescape(url) + '/web/zap?sRef=' + decodeURIComponent(serviceReference));
@@ -117,49 +118,13 @@ new page.Route(plugin.id + ":zapTo:(.*):(.*):(.*)", function(page, url, serviceN
     });
 });
 
-new page.Route(plugin.id + ":getServices:(.*):(.*):(.*):(.*)", function(page, url, serviceName, serviceReference, title) {
-    setPageHeader(page, unescape(title) + ' - ' + trim(unescape(serviceName)));
+function listSatellites(page, title, param, url) {
+    setPageHeader(page, unescape(title));
     page.loading = true;
-    var doc = http.request(unescape(url) + '/web/getservices?sRef=' + serviceReference);
-    doc = XML.parse(doc);
-    try {
-        var e2services = doc.e2servicelist.filterNodes('e2service');
-        for (var i = 0; i < e2services.length; i++)
-            page.appendItem(plugin.id + ":zapTo:" + url + ':' + encodeURIComponent(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference), "video", {
-                title: e2services[i].e2servicename
-            });
-        page.metadata.title += ' (' + e2services.length + ')';
-    } catch(err) {
-        page.error('The list is empty');
-    }
-    page.loading = false;
-});
 
-new page.Route(plugin.id + ":bouquets:(.*):(.*)", function(page, title, url) {
-    setPageHeader(page, unescape(title) + ' - Bouquets');
-    page.loading = true;
-    var doc = http.request(unescape(url) + '/web/getservices');
-    page.loading = false;
+    var doc = http.request(unescape(url) + '/web/getservices?sRef=' + encodeURIComponent(param));
     doc = XML.parse(doc);
     var e2services = doc.e2servicelist.filterNodes('e2service');
-    if (e2services.length)
-        page.metadata.title += ' (' + e2services.length + ')';
-    for (var i = 0; i < e2services.length; i++) {
-        page.appendItem(plugin.id + ":getServices:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "directory", {
-            title: e2services[i].e2servicename
-        });
-    }
-});
-
-new page.Route(plugin.id + ":satellites:(.*):(.*)", function(page, title, url) {
-    setPageHeader(page, unescape(title) + ' - Satellites');
-    page.loading = true;
-    var doc = http.request(unescape(url) + '/web/getservices?sRef=' +
-        encodeURIComponent('1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) FROM SATELLITES ORDER BY name'));
-    doc = XML.parse(doc);
-    var e2services = doc.e2servicelist.filterNodes('e2service');
-    if (e2services.length)
-        page.metadata.title += ' (' + e2services.length + ')';
     for (var i = 0; i < e2services.length; i++) {
         if (e2services[i].e2servicereference.match(/flags/) || e2services[i].e2servicereference.match(/FROM PROVIDERS/))
             continue;
@@ -168,42 +133,65 @@ new page.Route(plugin.id + ":satellites:(.*):(.*)", function(page, title, url) {
         page.appendItem(plugin.id + ":getServices:" + url + ':' + escape(name) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "directory", {
             title: name
         });
+        page.entries++;
     }
+    page.metadata.title += ' (' + page.entries + ')';
     page.loading = false;
+}
+
+new page.Route(plugin.id + ":satellitesTV:(.*):(.*)", function(page, title, url) {
+    listSatellites(page, title + ' - Satellites (TV)', '1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) FROM SATELLITES ORDER BY name', url);
 });
 
-new page.Route(plugin.id + ":providers:(.*):(.*)", function(page, title, url) {
-    setPageHeader(page, unescape(title) + ' - Providers');
-    page.loading = true;
-    var doc = http.request(unescape(url) + '/web/getservices?sRef=' +
-        encodeURIComponent('1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) FROM PROVIDERS ORDER BY name'));
-    doc = XML.parse(doc);
-    var e2services = doc.e2servicelist.filterNodes('e2service');
-    if (e2services.length)
-        page.metadata.title += ' (' + e2services.length + ')';
-    for (var i = 0; i < e2services.length; i++) {
-        page.appendItem(plugin.id + ":getServices:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "directory", {
-            title: trim(e2services[i].e2servicename)
-        });
-    }
-    page.loading = false;
+new page.Route(plugin.id + ":satellitesRadio:(.*):(.*)", function(page, title, url) {
+    listSatellites(page, title + ' - Satellites (Radio)', '1:7:1:0:0:0:0:0:0:0:(type == 2) FROM SATELLITES ORDER BY name', url);
 });
 
-new page.Route(plugin.id + ":all:(.*):(.*)", function(page, title, url) {
-    setPageHeader(page, unescape(title) + ' - All services');
+function callAPI(page, title, path, param, route, url) {
+    setPageHeader(page, trim(unescape(title)));
     page.loading = true;
-    var doc = http.request(unescape(url) + '/web/getservices?sRef=' +
-        encodeURIComponent('1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) ORDER BY name'));
+    var doc = http.request(unescape(url) + path + encodeURIComponent(param));
     doc = XML.parse(doc);
-    var e2services = doc.e2servicelist.filterNodes('e2service');
-    if (e2services.length)
-        page.metadata.title += ' (' + e2services.length + ')';
-    for (var i = 0; i < e2services.length; i++) {
-        page.appendItem(plugin.id + ":zapTo:" + url + ':' + encodeURIComponent(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference), "video", {
-            title: trim(e2services[i].e2servicename)
-        });
+    try {
+        var e2services = doc.e2servicelist.filterNodes('e2service');
+        if (e2services.length)
+            page.metadata.title += ' (' + e2services.length + ')';
+        for (var i = 0; i < e2services.length; i++) {
+            page.appendItem(plugin.id + ':' + route + ':' + url + ':' + encodeURIComponent(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "video", {
+                title: trim(e2services[i].e2servicename)
+            });
+        }
+    } catch(err) {
+        page.error('The list is empty');
     }
     page.loading = false;
+}
+
+new page.Route(plugin.id + ":getServices:(.*):(.*):(.*):(.*)", function(page, url, serviceName, serviceReference, title) {
+    callAPI(page, title + ' - ' + decodeURIComponent(serviceName), '/web/getservices?sRef=' + serviceReference, '', 'zapTo', url);
+});
+
+new page.Route(plugin.id + ":bouquetsTV:(.*):(.*)", function(page, title, url) {
+    callAPI(page, title + ' - Bouquets (TV)', '/web/getservices?sRef=', '1:7:1:0:0:0:0:0:0:0:(type == 2) FROM BOUQUET "bouquets.tv" ORDER BY bouquet', 'getServices', url);
+});
+
+new page.Route(plugin.id + ":bouquetsRadio:(.*):(.*)", function(page, title, url) {
+    callAPI(page, title + ' - Bouquets (Radio)', '/web/getservices?sRef=', '1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) FROM BOUQUET "bouquets.radio" ORDER BY bouquet', 'getServices', url);
+});
+
+new page.Route(plugin.id + ":providersTV:(.*):(.*)", function(page, title, url) {
+    callAPI(page, title + ' - Providers (TV)', '/web/getservices?sRef=', '1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) FROM PROVIDERS ORDER BY name', 'getServices', url);
+});
+new page.Route(plugin.id + ":providersRadio:(.*):(.*)", function(page, title, url) {
+    callAPI(page, title + ' - Providers (TV)', '/web/getservices?sRef=', '1:7:1:0:0:0:0:0:0:0:(type == 2) FROM PROVIDERS ORDER BY name', 'getServices', url);
+});
+
+new page.Route(plugin.id + ":allTV:(.*):(.*)", function(page, title, url) {
+    callAPI(page, title + ' - All TV', '/web/getservices?sRef=', '1:7:1:0:0:0:0:0:0:0:(type == 1) || (type == 17) || (type == 195) || (type == 25) ORDER BY name', 'zapTo', url);
+});
+
+new page.Route(plugin.id + ":allRadio:(.*):(.*)", function(page, title, url) {
+    callAPI(page, title + ' - All Radio', '/web/getservices?sRef=', '1:7:1:0:0:0:0:0:0:0:(type == 2) ORDER BY name', 'zapTo', url);
 });
 
 new page.Route(plugin.id + ":processReceiver:(.*):(.*)", function(page, title, url) {
@@ -236,21 +224,33 @@ new page.Route(plugin.id + ":processReceiver:(.*):(.*)", function(page, title, u
             title: 'Screenshot from the current service'
         });
 
-    page.appendItem(plugin.id + ":bouquets:" + title + ':' + url, "directory", {
-        title: 'Bouquets'
+    page.appendItem(plugin.id + ":bouquetsTV:" + title + ':' + url, "directory", {
+        title: 'Bouquets (TV)'
     });
-    page.appendItem(plugin.id + ":satellites:" + title + ':' + url, "directory", {
-        title: 'Satellites'
+    page.appendItem(plugin.id + ":satellitesTV:" + title + ':' + url, "directory", {
+        title: 'Satellites (TV)'
     });
-
     if (service.showProviders)
-        page.appendItem(plugin.id + ":providers:" + title + ':' + url, "directory", {
-            title: 'Providers'
+        page.appendItem(plugin.id + ":providersTV:" + title + ':' + url, "directory", {
+            title: 'Providers (TV)'
         });
-
     if (service.showAllServices)
-        page.appendItem(plugin.id + ":all:" + title + ':' + url, "directory", {
-            title: 'All services'
+        page.appendItem(plugin.id + ":allTV:" + title + ':' + url, "directory", {
+            title: 'All TV'
+        });
+    page.appendItem(plugin.id + ":bouquetsRadio:" + title + ':' + url, "directory", {
+        title: 'Bouquets (Radio)'
+    });
+    page.appendItem(plugin.id + ":satellitesRadio:" + title + ':' + url, "directory", {
+        title: 'Satellites (Radio)'
+    });
+    if (service.showProviders)
+        page.appendItem(plugin.id + ":providersRadio:" + title + ':' + url, "directory", {
+            title: 'Providers (Radio)'
+        });
+    if (service.showAllServices)
+        page.appendItem(plugin.id + ":allRadio:" + title + ':' + url, "directory", {
+            title: 'All Radio'
         });
     page.loading = false;
 });
