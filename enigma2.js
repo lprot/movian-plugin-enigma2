@@ -101,16 +101,16 @@ new page.Route(plugin.id + ":streamFromCurrent:(.*)", function(page, url) {
 new page.Route(plugin.id + ":zapTo:(.*):(.*):(.*)", function(page, url, serviceName, serviceReference) {
     page.loading = true;
     if (service.zap)
-        var doc = http.request(unescape(url) + '/web/zap?sRef=' + serviceReference);
+        var doc = http.request(unescape(url) + '/web/zap?sRef=' + decodeURIComponent(serviceReference));
 
     page.type = 'video';
     page.loading = false;
     page.source = "videoparams:" + JSON.stringify({
-        title: unescape(serviceName),
+        title: decodeURIComponent(serviceName),
         no_fs_scan: true,
         canonicalUrl: plugin.id + ':zapTo:' + url + ':' + serviceName + ':' + serviceReference,
         sources: [{
-            url: unescape(url).replace('https:', 'http:') + ':8001/' + serviceReference,
+            url: unescape(url).replace('https:', 'http:') + ':8001/' + decodeURIComponent(serviceReference),
             mimetype: 'video/mp2t'
         }],
         no_subtitle_scan: true
@@ -125,7 +125,7 @@ new page.Route(plugin.id + ":getServices:(.*):(.*):(.*):(.*)", function(page, ur
     try {
         var e2services = doc.e2servicelist.filterNodes('e2service');
         for (var i = 0; i < e2services.length; i++)
-            page.appendItem(plugin.id + ":zapTo:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference), "video", {
+            page.appendItem(plugin.id + ":zapTo:" + url + ':' + encodeURIComponent(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference), "video", {
                 title: e2services[i].e2servicename
             });
         page.metadata.title += ' (' + e2services.length + ')';
@@ -199,7 +199,7 @@ new page.Route(plugin.id + ":all:(.*):(.*)", function(page, title, url) {
     if (e2services.length)
         page.metadata.title += ' (' + e2services.length + ')';
     for (var i = 0; i < e2services.length; i++) {
-        page.appendItem(plugin.id + ":zapTo:" + url + ':' + escape(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "video", {
+        page.appendItem(plugin.id + ":zapTo:" + url + ':' + encodeURIComponent(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference), "video", {
             title: trim(e2services[i].e2servicename)
         });
     }
