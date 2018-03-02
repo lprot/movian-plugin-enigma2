@@ -157,9 +157,21 @@ function callAPI(page, title, path, param, route, url) {
         if (e2services.length)
             page.metadata.title += ' (' + e2services.length + ')';
         for (var i = 0; i < e2services.length; i++) {
-            page.appendItem(plugin.id + ':' + route + ':' + url + ':' + encodeURIComponent(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "video", {
-                title: trim(e2services[i].e2servicename)
-            });
+            var type = e2services[i].e2servicereference.substr(0, 4);
+            if (type == '4097' || type == '5001' || type == '5002') {
+                var ref = e2services[i].e2servicereference.match(/[\s\S]*?:[\s\S]*?:[\s\S]*?:[\s\S]*?:[\s\S]*?:[\s\S]*?:[\s\S]*?:[\s\S]*?:[\s\S]*?:[\s\S]*?:([\s\S]*?):/);
+                    page.appendItem(unescape(ref[1]).match(/m3u8/) ? 'hls:' + unescape(ref[1]) : unescape(ref[1]), "video", {
+                        title: trim(e2services[i].e2servicename),
+                        description: unescape(ref[1])
+                    });
+            } else if (e2services[i].e2servicereference.substr(0, 5) == '1:64:') 
+                page.appendItem('', 'separator', {
+                    title: e2services[i].e2servicename
+                });
+            else 
+                page.appendItem(plugin.id + ':' + route + ':' + url + ':' + encodeURIComponent(e2services[i].e2servicename) + ':' + encodeURIComponent(e2services[i].e2servicereference) + ':' + title, "video", {
+                    title: trim(e2services[i].e2servicename)
+                });
         }
     } catch(err) {
         page.error('The list is empty');
